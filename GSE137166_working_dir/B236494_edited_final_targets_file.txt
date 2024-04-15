@@ -1,0 +1,7 @@
+Name	Filename
+Arid1a_f/f_1	GSM4072331
+Arid1a_f/f_2	GSM4072332
+Arid1a_f/f_3	GSM4072333
+Arid1a_d/d_1	GSM4072334
+Arid1a_d/d_2	GSM4072335
+Arid1a_d/d_3	GSM4072336
