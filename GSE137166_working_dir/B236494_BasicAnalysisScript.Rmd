@@ -33,7 +33,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Affymetrix Microarray Analysis Basic (Skeleton) Workflow
+# B236494 - Affymetrix Microarray Analysis Basic Workflow
 
 ##Load the required libraries & load the files for the workflow
 
@@ -42,6 +42,7 @@ library(limma)
 library(affy)
 library(annotate)
 library(mouse4302.db)# load chip-specific annotation
+library(ggplot2)
 
 #install.packages("scatterplot3d",repo="http://cran.ma.imperia#l.ac.uk")
 #Then load the library
@@ -70,7 +71,7 @@ mydata
 hist(mydata)
 
 # And a boxplot with different colour per sample group
-colours <- c(rep("yellow",3),rep("red",2),rep("blue",2), "red", rep("green",3))
+colours <- c(rep("yellow",3),rep("red",3))
 
 boxplot(mydata, col=colours, las=2)
 
@@ -97,10 +98,10 @@ values <- exprs(eset)
 boxplot(values, col=colours,las=2)
 
 # MA plot of the samples 1 and 4
-mva.pairs(values[, c(1,4)])
+mva.pairs(values)
 # The same plot for the non-normalised raw data
 # Note that the mva.pairs call below only plots a few of the  #samples – you may wish to plot them all but this is slow
-mva.pairs(pm(mydata)[, c(1,4)])
+mva.pairs(pm(mydata))
 
 ```
 
@@ -122,6 +123,7 @@ plot(hc)
 
 ```{r pca_normalised, echo=FALSE}
 
+### removed scale=T, i think its already normalised
 pca <- prcomp(t(values))
 # Plot the PCA results
 
@@ -157,21 +159,23 @@ probesets[1:10]
 #Build final fold table
 #Calculate the means
 #Note mean of the log is not the same as the log of the mean!!
-ES.mean <- apply(exprsvals10[,c("GSM272753.CEL", "GSM272836.CEL","GSM272837.CEL")],1,mean)
-iPS_OK.mean <- apply(exprsvals10[,c("GSM272839.CEL", "GSM272846.CEL","GSM272890.CEL")],1,mean)
-iPS_4F.mean <- apply(exprsvals10[,c("GSM279200.CEL", "GSM279201.CEL","GSM279202.CEL")],1,mean)
-NSC.mean <- apply(exprsvals10[,c("GSM272847.CEL","GSM272848.CEL")],1,mean)
+Arid1a_f_f.mean <- apply(exprsvals10[,c("GSM4072331_AF1_Mouse430_2_.CEL", "GSM4072332_AF2_Mouse430_2_.CEL","GSM4072333_AF3_Mouse430_2_.CEL")],1,mean)
+
+Arid1a_d_d.mean <- apply(exprsvals10[,c("GSM4072334_AD1_Mouse430_2_.CEL", "GSM4072335_AD2_Mouse430_2_.CEL","GSM4072336_AD3_Mouse430_2_.CEL")],1,mean)
 #calculate some fold changes
-ES_iPS_OK <-ES.mean /iPS_OK.mean
-ES_iPS_4F <-ES.mean /iPS_4F.mean
-ES_NSC <-ES.mean /NSC.mean
+Arid1a_fold_change <- Arid1a_f_f.mean/Arid1a_d_d.mean
+##ES_iPS_OK <-ES.mean /iPS_OK.mean
+##ES_iPS_4F <-ES.mean /iPS_4F.mean
+##ES_NSC <-ES.mean /NSC.mean
+
 #build a summary table to hold all the data
-all.data= cbind(ES.mean,iPS_OK.mean,iPS_4F.mean, NSC.mean, ES_iPS_OK,
-ES_iPS_4F, ES_NSC)
+
+##all.data= cbind(ES.mean,iPS_OK.mean,iPS_4F.mean, NSC.mean, ES_iPS_OK,ES_iPS_4F, ES_NSC)
+all.data= cbind(Arid1a_fold_change)
 #check the column names
 colnames(all.data)
 #write the table of means as an output
-write.table(all.data,file="group_means.txt", quote=F,
+write.table(all.data,file="B236494_group_means.txt", quote=F,
 sep="\t",col.names=NA)
 ```
 
@@ -183,7 +187,7 @@ sep="\t",col.names=NA)
 sampleNames(eset)
 #Rename the samples
 sampleNames(eset) <-
-c("ESC.1","ESC.2","ESC.3","iPS2.2","iPS2.3","NSC.1","NSC.2","iPS2.1","iPS4.1","iPS4.2","iPS.3")
+c("GSM4072331_AF1_Mouse430_2_.CEL","GSM4072332_AF2_Mouse430_2_.CEL","GSM4072333_AF3_Mouse430_2_.CEL","GSM4072334_AD1_Mouse430_2_.CEL","GSM4072335_AD2_Mouse430_2_.CEL","GSM4072336_AD3_Mouse430_2_.CEL")
 #Check the samples have renamed
 sampleNames(eset)
 
@@ -209,6 +213,12 @@ tmp <- data.frame(ID=ID, Symbol=Symbol, Name=Name, stringsAsFactors=F)
 tmp[tmp=="NA"] <- NA #fix padding with NA characters 
 #assign as feature data of the current Eset
 fData(eset) <- tmp
+
+# Check for rows that don’t have an EntrezID
+missing_entrezid_count <- sum(is.na(fData(eset)$ENTREZID))
+
+print(missing_entrezid_count)
+
 ```
 
 ## Statistical analysis using Limma
@@ -216,16 +226,15 @@ fData(eset) <- tmp
 ```{r limma_statistical_analysis, echo=TRUE}
 
 #Build the design matrix
-design <- model.matrix(~-1+factor(c(1,1,1,2,2,3,3,2,4,4,4)))
-colnames(design) <- c("ESC","iPS2","NSC","iPS4")
+design <- model.matrix(~-1+factor(c(1,1,1,2,2,2)))
+colnames(design) <- c("Arid1a_f_f","Arid1a_d_d")
 #Check it makes sense
 sampleNames(eset)
 #output the design matrix
 design
 
 #This instructs Limma which comparisons to make
-contrastmatrix <- makeContrasts(ESC-iPS2,ESC-NSC,ESC-iPS4,
-levels=design)
+contrastmatrix <- makeContrasts(Arid1a_f_f-Arid1a_d_d,levels=design)
 contrastmatrix
 
 #issue these commands to fit the model
@@ -241,7 +250,7 @@ fit2 <- eBayes(fit2)
 #get the results
 topTable(fit2,coef=1,adjust="fdr")
 myresults <-topTable(fit2,coef=1, adjust="fdr", number=nrow(eset))
-write.table(myresults,"myresults.txt")
+write.table(myresults,"B236494_myresults.txt")
 
 #make a venn diagram
 clas <- classifyTestsF(fit2)
@@ -294,17 +303,18 @@ H.indices <- ids2indices(Mm.H,fData(eset_t)$ENTREZID)
 #I just run mroast here as an example- justify the selection of this method!
 
 #if you want to run mroast
-results <-mroast(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
+results_mroast <-mroast(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
 #if you want to run camera
-#results <-camera(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
+results_camera <-camera(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
 #if you want to run romer
-#results <-romer(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
+results_romer <-romer(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
 #View the results
-results
+results_mroast
+
 #Use help for other parameters. Note we might decide to use #exactly the same model as our differential gene analysis for #the enrichment analysis- in this case we can extract it from #the fit
 #sv <- squeezeVar(fit$sigma^2,df=fit$df.residual)
 
-write.table(results,"enrichment.txt",sep="\t")
+write.table(results_mroast,"B236494_final_enrichment.txt",sep="\t")
 #You can then examine the results in “enrichment.txt”.  It is a text file.  It can be downloaded to view in a spreadsheet such as Excel.
 ```
 
@@ -313,5 +323,48 @@ write.table(results,"enrichment.txt",sep="\t")
 ```{r session_info, echo=TRUE}
 
 sessionInfo()
+
+```
+
+# Selecting Differentially expressed genes in the dataset
+
+```{r Volcano Plot, echo=TRUE, fig.cap="Volcano plot of differential expression"}
+
+# Extracting the table of results
+volcano_plot_results <- topTable(fit2, coef=1, number=Inf, sort.by="none", p.value=1)
+
+# Creating the volcano plot
+#with(results, plot(logFC, -log10(P.Value), pch=20, main="Volcano Plot", xlab="Log Fold Change", ylab="-Log10 P-value"))
+with(volcano_plot_results, {
+    plot(logFC, -log10(P.Value), pch=20, col=ifelse(P.Value < 0.05 & abs(logFC) > 1, "red", "black"), main="Volcano Plot", xlab="Log Fold Change", ylab="-Log10 P-value")
+    abline(h=-log10(0.05), col="blue")
+    abline(v=c(-1, 1), col="green")
+})
+
+
+# Adding a horizontal line for P-value threshold (example threshold P=0.05)
+abline(h=-log10(0.05), col="blue")
+
+# Adding vertical lines for log fold changes thresholds (example thresholds logFC > |1|)
+abline(v=c(-1, 1), col="red")
+
+ggplot(volcano_plot_results, aes(x=logFC, y=-log10(P.Value), color=(P.Value < 0.05 & abs(logFC) > 1))) +
+    geom_point(alpha=0.5) +
+    scale_color_manual(values=c("black", "red")) +
+    labs(title="Volcano Plot", x="Log Fold Change", y="-Log10 P-value") +
+    geom_hline(yintercept=-log10(0.05), color="blue", linetype="dashed") +
+    geom_vline(xintercept=c(-1, 1), color="green", linetype="dashed")
+
+
+```
+
+```{r volcano_plot_limma_basic, echo=TRUE, fig.cap="Volcano plot of differential expression using limma"}
+
+# Using the volcanoplot function to create the plot
+volcanoplot(fit2, coef=1, style="p-value", highlight=10,
+            names=rownames(fit2$coefficients), 
+            xlab="Log2 Fold Change", ylab="-Log10 P-value",
+            pch=20, cex=1, main="Volcano Plot")
+
 
 ```
