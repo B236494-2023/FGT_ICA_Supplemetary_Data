@@ -95,7 +95,7 @@ hist(mydata)
 
 ```
 
-As visible from the output the density plot, the peak of expression seem to be consistent across different sample prior to normalisation which is is a sign of good quality, although some variation is distinguishable and expected. This can be observed further in the boxplot below. 
+As visible from the output the density plot, the peak of expression seem to be consistent across different sample prior to normalisation which is is a sign of good quality, although some variation is distinguishable and expected. This can be observed further in the boxplot below.
 
 ```{r boxplot raw, echo=TRUE}
 
@@ -115,8 +115,7 @@ boxplot(mydata, col=colours, las=1)
 
 ```
 
-The boxplots results is promising as well. The different measures of the boxplot provide a good overview of what the data is like for each sample and between the two groups, Arid1a f/f mice in yellow and Arid1a mice in red. The median line of all the samples seems to be quite similar which indicates that the overall expression values seem to consistent across the different samples as seen in the density plot. There is some variation within each group, as seen by the interquartile range (height of boxplots), between replicates but not to a very high level. Thus the replicates possess a good amount of similarity to each other. The lack of high variance between the two groups is representative of similar levels of expression between the two conditions. 
-
+The boxplots results is promising as well. The different measures of the boxplot provide a good overview of what the data is like for each sample and between the two groups, Arid1a f/f mice in yellow and Arid1a mice in red. The median line of all the samples seems to be quite similar which indicates that the overall expression values seem to consistent across the different samples as seen in the density plot. There is some variation within each group, as seen by the interquartile range (height of boxplots), between replicates but not to a very high level. Thus the replicates possess a good amount of similarity to each other. The lack of high variance between the two groups is representative of similar levels of expression between the two conditions.
 
 ## Normalise the data using RMA
 
@@ -134,14 +133,15 @@ eset <- rma(mydata)
 values <- exprs(eset)
 
 ```
+
 The object "values" contains the individual expression values for each gene in our list and the individual expression value for each gene for a particular sample.
 
 ## Plotting Normalised Data
 
 Now that we have the normalised data, we can plot these values to observe the changes that have been made following the RMA step. A boxplot will be used again to observe the changes. The use of the mva.pairs() is also employed which generates a MA plot for all the samples. The MA plot, which is described as a application of Bland-Altman plot, is a method of visually representing genomic data. It works by visualising the differences among measures taken in 2 different samples "by transforming the data onto M (log ratio) and A (mean average) scales, then plotting these values." This can be done for every sample against every sample which is what has been done here for both the normalised and non-normalised data. it provides valuable insight into the differences between samples and there is genuine difference the groups. If there was no difference then it would imply that there has been no effect on the induced condition on the group of mice whose Arid1a gene has been deleted which is not consistent with what is known. It gives confidence that the experiment was performed well.
 
-
 First, looking at the boxplot,
+
 ```{r plot_normalised boxplot, echo=TRUE }
 
 # Boxplot to observe the results of normalisation
@@ -153,6 +153,7 @@ boxplot(values, col=colours,las=1)
 
 #dev.off()
 ```
+
 Normalisation has been performed accurately. The presence of outliers could be interesting and something that we will explore downstream. The interquartile range is seen to similar across the different groups means which they should be suitable for comparison for significant genes.
 
 Below, both the MVA plots will be compared.
@@ -181,10 +182,9 @@ mva.pairs(values)
 #dev.off()
 ```
 
-Observing both MVA plots we can make some inferences. The consistency across the replicates from the same group i.e same biologcal condition implies that normalisation has been carried out successfully and a comparison between these samples is valid. Although there is consistency among the samples in a group there is still a difference betweent the two groups in the expression. This is promising because this means that the onset of the condition actually has resulted in a change in the expression levels. 
+Observing both MVA plots we can make some inferences. The consistency across the replicates from the same group i.e same biologcal condition implies that normalisation has been carried out successfully and a comparison between these samples is valid. Although there is consistency among the samples in a group there is still a difference betweent the two groups in the expression. This is promising because this means that the onset of the condition actually has resulted in a change in the expression levels.
 
 As the data has been normalised, we can now proceed to the next stage of identifying the significant genes in the dataset.
-
 
 ## Plot Cluster Dendogram
 
@@ -207,7 +207,6 @@ plot(hc)
 ```
 
 We could expect that samples will in 2 clusters of 3 as there are 3 samples for each group but that is not the case here. One of the f_f group has a similar expression pattern to the d_d group while the other samples cluster with samples of the same group. This could be because of an atypical sample or soemething of biological relevance. More samples would be required to further analyse this clustering which is unfortunately not available.
-
 
 ## Performing PCA
 
@@ -281,7 +280,8 @@ sep="\t",col.names=NA)
 
 ## Beginning statistical analysis
 
-In this section, the statistical tests will be performed using the makeContrasts(), lmFit(), eBayes(), and  topTable(). At the end we obtain a txt file with the results from the topTable() with the values mentioned earlier.
+In this section, the statistical tests will be performed using the makeContrasts(), lmFit(), eBayes(), and topTable(). At the end we obtain a txt file with the results from the topTable() with the values mentioned earlier.
+
 ```{r limma_stats, echo=TRUE}
 
 #Check original sample order
@@ -380,7 +380,7 @@ In this section, Functional Enrichment Analysis (FEa) will be performed. This in
 
 The reason why functional enrichment analysis is done is to find gene sets that are highly over-represented in certain biological functions or pathways (from MsigDB "Mm.H" here). The analysis method is chosen based on the study.
 
-Here, romer (Rotation gene set tests of MEan Ranks) is a more suitable choice due to a number of reasons. It is a competitive test where it pitts the different gene sets against one another. It evaluates changes at the level of gene sets which is suitable as it can consider the behaviour of genes as a collective within certain defined pathways or processes. It is also suitable to detect very subtle changes in the  expression across a gene set which seems to be the case from the plots earlier. We can expect the expression to be downregulated as we know the d_d group has the gene deleted so the expression would be diminished. There are also other options such as mroast and camera but romer seems to be the best choice here.
+Here, romer (Rotation gene set tests of MEan Ranks) is a more suitable choice due to a number of reasons. It is a competitive test where it pitts the different gene sets against one another. It evaluates changes at the level of gene sets which is suitable as it can consider the behaviour of genes as a collective within certain defined pathways or processes. It is also suitable to detect very subtle changes in the expression across a gene set which seems to be the case from the plots earlier. We can expect the expression to be downregulated as we know the d_d group has the gene deleted so the expression would be diminished. There are also other options such as mroast and camera but romer seems to be the best choice here.
 
 ```{r functional_enrichment setup , echo=TRUE}
 
@@ -449,10 +449,6 @@ Looking at the results, a few main results come to notice, when sorted by "Mixed
 
 "HALLMARK_ESTROGEN_RESPONSE_LATE", "HALLMARK_APOPTOSIS" "HALLMARK_ESTROGEN_RESPONSE_EARLY" have low p-values in the "Mixed" category. We know that the deletion of the Arid1a gene has effects on hormones and development of the endometrium. This could be signifying the complex bidirectional dysregulation that happens when this gene is removed and the resultant hormonal imbalances and cell death that could be occuring.
 
-
-
-
-
 # Selecting Differentially expressed genes in the dataset
 
 ```{r volcano_plot_limma_basic, echo=TRUE, fig.cap="Volcano plot of differential expression using limma"}
@@ -479,11 +475,9 @@ top_genes_topTreat_by_adj_p_value <- topTreat_myresults[order(topTreat_myresults
 
 print(top_genes_topTreat_by_adj_p_value)
 
-
-
 ```
 
-# Supplementary Material
+From this list, the two gene symbols which were present as an intersection between the earlier top 10 genes produced by logFC and adjusted p value are present in this as well. This is strong evidence that genes with this gene symbol are highly significant and should be explored in depth for their biological importance. \# Supplementary Material
 
 ## Supplementary code to load .CEL files:
 
