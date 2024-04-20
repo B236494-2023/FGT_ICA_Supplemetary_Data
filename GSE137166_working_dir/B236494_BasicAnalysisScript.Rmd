@@ -232,7 +232,8 @@ We can see a clear variability between both the groups along PC1 (x axis) which 
 
 ## Perform fold filtering
 
-In this section,
+In this section, we first calculate the average fold change expression differences of the groups, First the group means are calculated then the comparison is done by building the contrast matrix and then the model fitting is performed. topTable() is used to obtain a dataframe "myresults" which contains many values for each gene for individual samples, such as logFC, adjusted p-value, B value, etc which is useful for filtering for significant genes.
+
 ```{r fold_filtering, include=FALSE}
 
 #obtaining a matrix of expression values
@@ -280,6 +281,7 @@ sep="\t",col.names=NA)
 
 ## Beginning statistical analysis
 
+In this section, the statistical tests will be performed using the makeContrasts(), lmFit(), eBayes(), and  topTable(). At the end we obtain a txt file with the results from the topTable() with the values mentioned earlier.
 ```{r limma_stats, echo=TRUE}
 
 #Check original sample order
@@ -352,11 +354,35 @@ fit2 <- eBayes(fit2)
 topTable(fit2,coef=1,adjust="fdr")
 myresults <-topTable(fit2,coef=1, adjust="fdr", number=nrow(eset))
 write.table(myresults,"B236494_myresults.txt")
+
+myresults_sorted_by_abs_logFC <- myresults[order(-abs(myresults$logFC)), ]
+top_10_toptable_FC <- head(myresults_sorted_by_abs_logFC, 10)
+
+myresults_sorted_by_adj_p_value <- myresults[order(myresults$adj.P.Val), ]
+top_10_toptable_by_adj_p_value <- head(myresults_sorted_by_adj_p_value, 10)
+
+common_genes_logFC_and_adj_p_value <- intersect(top_10_toptable_FC$Symbol, top_10_toptable_by_adj_p_value$Symbol)
+print(common_genes_logFC_and_adj_p_value)
+
+common_genes_logFC_and_adj_p_value_information <- myresults[myresults$Symbol %in% common_genes_logFC_and_adj_p_value, ]
+print(common_genes_logFC_and_adj_p_value_information)
 ```
 
-## Carry out Functional Enrichment analysis
+Looking at these results we can sort by different parameters and compare what genes are significant based on these values.
 
-```{r functional_enrichment, echo=TRUE}
+There are actually some gene symbols which are present in both lists. These are displayed below:
+
+(images)
+
+## Functional Enrichment analysis
+
+In this section, Functional Enrichment Analysis (FEa) will be performed. This involves a few keys steps; Preparation of the gene set object for enrichment analysis, Check expression data for apt annotation, Perform the actual FEA, share the output.
+
+The reason why functional enrichment analysis is done is to find gene sets that are highly over-represented in certain biological functions or pathways (from MsigDB "Mm.H" here). The analysis method is chosen based on the study.
+
+Here, romer (Rotation gene set tests of MEan Ranks) is a more suitable choice due to a number of reasons. It is a competitive test where it pitts the different gene sets against one another. It evaluates changes at the level of gene sets which is suitable as it can consider the behaviour of genes as a collective within certain defined pathways or processes. It is also suitable to detect very subtle changes in the  expression across a gene set which seems to be the case from the plots earlier. We can expect the expression to be downregulated as we know the d_d group has the gene deleted so the expression would be diminished. There are also other options such as mroast and camera but romer seems to be the best choice here.
+
+```{r functional_enrichment setup , echo=TRUE}
 
 Mm.H <- readRDS("/shared_files/MSigDB/Mm.h.all.v7.1.entrez.rds") 
 
@@ -368,7 +394,7 @@ ls("package:mouse4302.db")
 
 #Show the annotation keys in this database
 keytypes(mouse4302.db) 
-
+#Check samplenNames
 sampleNames(eset)
 ```
 
@@ -390,7 +416,7 @@ head(fData(eset), 10)
 eset_t<-eset[is.na(fData(eset)$ENTREZID)==0,]
 ```
 
-## Functional Enrichment Analysis
+## Actual Functional Enrichment Analysis Step
 
 ```{r convert_indicex, echo=TRUE}
 
@@ -404,20 +430,27 @@ H.indices <- ids2indices(Mm.H,fData(eset_t)$ENTREZID)
 #if you want to run mroast
 #results_mroast <-mroast(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
 #if you want to run camera
-results_camera <-camera(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
+#results_camera <-camera(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
 #if you want to run romer
-#results_romer <-romer(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
+results_romer <-romer(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
 #View the results
-results_camera
+results_romer
 
 #Use help for other parameters. Note we might decide to use 
 #exactly the same model as our differential gene analysis for 
 #the enrichment analysis- in this case we can extract it from #the fit
 #sv <- squeezeVar(fit$sigma^2,df=fit$df.residual)
 
-write.table(results_camera,"B236494_camera_final_enrichment.txt",sep="\t")
+write.table(results_romer,"B236494_romer_final_enrichment.txt",sep="\t")
 #You can then examine the results in “enrichment.txt”.  It is a text file.  It can be downloaded to view in a spreadsheet such as Excel.
 ```
+
+Looking at the results, a few main results come to notice, when sorted by "Mixed" category:
+
+"HALLMARK_ESTROGEN_RESPONSE_LATE", "HALLMARK_APOPTOSIS" "HALLMARK_ESTROGEN_RESPONSE_EARLY" have low p-values in the "Mixed" category. We know that the deletion of the Arid1a gene has effects on hormones and development of the endometrium. This could be signifying the complex bidirectional dysregulation that happens when this gene is removed and the resultant hormonal imbalances and cell death that could be occuring.
+
+
+
 
 
 # Selecting Differentially expressed genes in the dataset
@@ -442,18 +475,15 @@ volcanoplot(fit2, coef=1, style="p-value", highlight=10,
 topTreat_myresults <- topTreat(fit2, coef=1, adjust="BH", sort.by="p", number=Inf)
 write.table(topTreat_myresults, "B236494_topTreat_results.txt", sep="\t", quote=FALSE)
 
+top_genes_topTreat_by_adj_p_value <- topTreat_myresults[order(topTreat_myresults$adj.P.Val), ][1:10,]
+
+print(top_genes_topTreat_by_adj_p_value)
+
+
 
 ```
 
 # Supplementary Material
-
-### References:
-
-1.  Marquardt, R.M., Kim, T.H., Yoo, J.-Y., Teasley, H.E., Fazleabas, A.T., Young, S.L., Lessey, B.A., Arora, R., and Jeong, J.-W. (2021). Endometrial epithelial ARID1A is critical for uterine gland function in early pregnancy establishment. The FASEB Journal *35*, e21209. [10.1096/fj.202002178R](https://doi.org/10.1096/fj.202002178R).
-
-2.  
-
-### 
 
 ## Supplementary code to load .CEL files:
 
