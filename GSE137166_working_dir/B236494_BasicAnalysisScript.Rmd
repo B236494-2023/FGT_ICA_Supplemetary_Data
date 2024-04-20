@@ -9,7 +9,8 @@ output:
     output: html_document
 
 ```{r setup + libload, include=FALSE}
-# This is the setup code chunk that is only executed once to load the neccessary libraries
+# This is the setup code chunk that is 
+# only executed once to load the necessary libraries
 
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -21,8 +22,8 @@ library(ggplot2)
 library(knitr)
 library(tinytex)
 
-#install.packages("scatterplot3d",repo="http://cran.ma.imperia#l.ac.uk")
-#Then load the library
+# install.packages("scatterplot3d",repo="http://cran.ma.imperia#l.ac.uk")
+# Then load the library
 library(scatterplot3d)
 ```
 
@@ -48,16 +49,16 @@ There were two types of mice that were used to study this gene. Arid1a d/d and A
 
 The sample names are as follows:
 
--   GSM4072331	Arid1a f/f 1
--   GSM4072332	Arid1a f/f 2
--   GSM4072333	Arid1a f/f 3
--   GSM4072334	Arid1a d/d 1
--   GSM4072335	Arid1a d/d 2
--   GSM4072336	Arid1a d/d 3
+-   GSM4072331 Arid1a f/f 1
+-   GSM4072332 Arid1a f/f 2
+-   GSM4072333 Arid1a f/f 3
+-   GSM4072334 Arid1a d/d 1
+-   GSM4072335 Arid1a d/d 2
+-   GSM4072336 Arid1a d/d 3
 
 The goals of this analysis pipeline involves a few key steps:
 
--    To assess the quality of the data
+-   To assess the quality of the data
 -   Perform Normalisation of the data
 -   Robust Multi-array Average (RMA)
 -   Functional Enrichment Analysis
@@ -65,36 +66,62 @@ The goals of this analysis pipeline involves a few key steps:
 
 The Affy and Limma Bioconductor packages will be main tools that will be used throughout this pipeline with descriptions of the code as the execution proceeds.
 
-
-
-```{r dataload, echo=TRUE}
+```{r dataload, echo=TRUE, warning=FALSE}
 
 # Load the target file into an AnnotatedDataFrame object
-adf<-read.AnnotatedDataFrame("B236494_edited_final_targets_file.txt",header=TRUE,row.names=1,as.is=TRUE)
-# Load the expression values of all the CEL files in the targets file
-mydata <- ReadAffy(filenames=pData(adf)$FileName,phenoData=adf)
+adf<-read.AnnotatedDataFrame("B236494_edited_final_targets_file.txt",
+                             header=TRUE,row.names=1,as.is=TRUE)
 
-# Or just to quickly load all CEL files in the R working directory
+# Quickly loads all CEL files in the R working directory, 
+# Refer Supplementary Material if this doesn't work
 mydata <- ReadAffy()
-# View a summary of the example data
-mydata
+
+# Viewing a summary of the AffyBatch object that has 
+# all the .CEL files information loaded into it
+print(mydata)
+
 ```
 
 ## Build Quality Control Plots
 
-```{r qc_plots1, echo=TRUE}
+Now that the data has been loaded into the object, the quality of the Microarray data needs to assessed. This is important to ensure that the data has been successfully generated and that there is no severe contamination during the RNA extraction steps from the samples. Quality control can be performed by the use of box plots and a log density plot. Looking at the results of a box plot can give us an idea of the variation in data between the different replicates from each type of sample. If the difference between the replicates is large, this could imply that the extraction procedure was not done in a robust manner. The density histogram also serves the same function. Looking at these plots we can gain a preliminary idea of the quality of the data.
 
-# Quality control plots
+```{r density_plot, echo=TRUE}
+png("figures/density_plot.png", width=1000, height=1000)
+
+# Quality control plots 1
 hist(mydata)
 
-# And a boxplot with different colour per sample group
-colours <- c(rep("yellow",3),rep("red",3))
-
-boxplot(mydata, col=colours, las=2)
+dev.off()
 
 ```
 
+As visible from the output the density plot, the peak of expression seem to be consistent across different sample prior to normalisation which is is a sign of good quality, although some variation is distinguishable and expected. This can be observed further in the boxplot below. 
+
+```{r boxplot raw, echo=TRUE}
+
+# Quality control plots 2
+
+png("figures/boxplot_non_normalised_2.png", width=1000, height=1000)
+
+# Specifying colours for each group
+colours <- c(rep("yellow",3),rep("red",3))
+
+# Reduce font size for axis labels to increase readability
+par(cex.axis=0.9)
+
+boxplot(mydata, col=colours, las=1)
+
+dev.off()
+
+```
+
+The boxplots results is promising as well. The different measures of the boxplot provide a good overview of what the data is like for each sample and between the two groups, Arid1a f/f mice in yellow and Arid1a mice in red. The median line of all the samples seems to be quite similar which indicates that the overall expression values seem to consistent across the different samples as seen in the density plot. There is some variation within each group, as seen by the interquartile range (height of boxplots), between replicates but not to a very high level. Thus the replicates possess a good amount of similarity to each other. The lack of high variance between the two groups is representative of similar levels of expression between the two conditions. 
+
+
 ## Normalise the data using RMA
+
+Now t
 
 ```{r normalise, echo=FALSE}
 
@@ -107,26 +134,48 @@ values <- exprs(eset)
 
 ## Plot Normalised Data
 
-```{r plot_normalised boxplot, echo=FALSE}
+```{r plot_normalised boxplot, echo=TRUE }
+
 # Boxplot to observe the results of normalisation
-# Notice differences with the boxplot from the raw data
-boxplot(values, col=colours,las=2)
+png("figures/boxplot_normalised_2.png", width=1000, height=1000)
+
+# Increase font size for axis labels to increase readability
+par(cex.axis=1.4)
+
+boxplot(values, col=colours,las=1)
+
+dev.off()
 ```
 
 ```{r plot_normalised mva without normalisation}
+
 # The mva plot for the non-normalised raw data
+
+png("figures/mva_without_normalisation.png", width=1000, height=1000)
+
+par(cex.axis=0.3, cex.lab=0.5, cex=0.5)
 mva.pairs(pm(mydata))
+
+dev.off()
 ```
 
 ```{r plot_normalised mva with normalisation}
-# MA plot of the samples 1 and 4
+
+# MA plot of all the samples which have been normalised
+
+png("figures/mva_with_normalisation.png", width=1000, height=1000)
+
+par(cex.axis=0.7, cex.lab=0.5, cex=0.5)
 mva.pairs(values)
 
+dev.off()
 ```
 
-## Plot Heatmap
+## Plot Cluster Dendogram
 
-```{r heatmap_normalised, echo=FALSE}
+```{r heatmap_normalised, echo=TRUE}
+
+png("figures/Cluster_Dendogram.png", width=500, height=500)
 
 # To facilitate interpretation, let’s replace the columns # # header,currently
 # displaying the filename, to show the name of each sample 
@@ -136,11 +185,15 @@ colnames(values) <- rownames(pData(adf))
 # Pearson’s Correlation Coefficient
 hc<-hclust(as.dist(1-cor(values, method="pearson")), method="average")
 plot(hc)
+
+dev.off()
 ```
 
 ## Perform PCA
 
-```{r pca_normalised, echo=FALSE}
+```{r pca_normalised, echo=TRUE}
+
+png("figures/PCA.png", width=850, height=600)
 
 ### removed scale=T, i think its already normalised
 pca <- prcomp(t(values))
@@ -149,11 +202,13 @@ pca <- prcomp(t(values))
 s3d<-scatterplot3d(pca$x[,1:3], pch=19, color=rainbow(1))
 s3d.coords <- s3d$xyz.convert(pca$x[,1:3])
 text(s3d.coords$x, s3d.coords$y, labels = colnames(values),pos = 3,offset = 0.5)
+
+dev.off()
 ```
 
 ## Perform fold filtering
 
-```{r fold_filtering, echo=TRUE}
+```{r fold_filtering, include=FALSE}
 
 #obtaining a matrix of expression values
 exprsvals <- exprs(eset)
@@ -178,9 +233,9 @@ probesets[1:10]
 #Build final fold table
 #Calculate the means
 #Note mean of the log is not the same as the log of the mean!!
-Arid1a_f_f.mean <- apply(exprsvals10[,c("GSM4072331_AF1_Mouse430_2_.CEL", "GSM4072332_AF2_Mouse430_2_.CEL","GSM4072333_AF3_Mouse430_2_.CEL")],1,mean)
+Arid1a_f_f.mean <- apply(exprsvals10[,c("GSM4072331_AF1.CEL", "GSM4072332_AF2.CEL","GSM4072333_AF3.CEL")],1,mean)
 
-Arid1a_d_d.mean <- apply(exprsvals10[,c("GSM4072334_AD1_Mouse430_2_.CEL", "GSM4072335_AD2_Mouse430_2_.CEL","GSM4072336_AD3_Mouse430_2_.CEL")],1,mean)
+Arid1a_d_d.mean <- apply(exprsvals10[,c("GSM4072334_AD1.CEL", "GSM4072335_AD2.CEL","GSM4072336_AD3.CEL")],1,mean)
 #calculate some fold changes
 Arid1a_fold_change <- Arid1a_f_f.mean/Arid1a_d_d.mean
 ##ES_iPS_OK <-ES.mean /iPS_OK.mean
@@ -206,7 +261,7 @@ sep="\t",col.names=NA)
 sampleNames(eset)
 #Rename the samples
 sampleNames(eset) <-
-c("GSM4072331_AF1_Mouse430_2_.CEL","GSM4072332_AF2_Mouse430_2_.CEL","GSM4072333_AF3_Mouse430_2_.CEL","GSM4072334_AD1_Mouse430_2_.CEL","GSM4072335_AD2_Mouse430_2_.CEL","GSM4072336_AD3_Mouse430_2_.CEL")
+c("GSM4072331_AF1.CEL","GSM4072332_AF2.CEL","GSM4072333_AF3.CEL","GSM4072334_AD1.CEL","GSM4072335_AD2.CEL","GSM4072336_AD3.CEL")
 #Check the samples have renamed
 sampleNames(eset)
 
@@ -216,7 +271,9 @@ sampleNames(eset)
 ##Building annotation for differential gene identification
 #establish annotation for MOE430v2
 #which annotation do we need
-#modified from #http://gettinggeneticsdone.blogspot.co.uk/2012/01/annotating-limma-#results-with-gene.html
+#modified from 
+#http://gettinggeneticsdone.blogspot.co.uk/2012/01/
+#annotating-limma-#results-with-gene.html
 
 eset@annotation
 
@@ -298,7 +355,8 @@ sampleNames(eset)
 res <- select(mouse4302.db, keys = rownames(eset), columns = c("ENTREZID", "ENSEMBL","SYMBOL"), keytype="PROBEID")
 #View the top of the table
 head(res)
-#find the index of each row of the expression set in the #annotation object res
+#find the index of each row of the expression set in the 
+#annotation object res
 idx <- match(rownames(eset), res$PROBEID)
 #Use the index to set the phenotypic data in the ExpressionSet
 fData(eset) <- res[idx, ]
@@ -313,7 +371,8 @@ eset_t<-eset[is.na(fData(eset)$ENTREZID)==0,]
 
 #convert to indexes
 H.indices <- ids2indices(Mm.H,fData(eset_t)$ENTREZID)
-#Pick the most suitable enrichment analysis tool to find #enrichment signatures in the data and run this tool So:-
+#Pick the most suitable enrichment analysis tool to find 
+#enrichment signatures in the data and run this tool So:-
 
 #I just run mroast here as an example- justify the selection of this method!
 
@@ -326,7 +385,9 @@ results_camera <-camera(eset_t,index=H.indices,design=design,contrast=contrastma
 #View the results
 results_camera
 
-#Use help for other parameters. Note we might decide to use #exactly the same model as our differential gene analysis for #the enrichment analysis- in this case we can extract it from #the fit
+#Use help for other parameters. Note we might decide to use 
+#exactly the same model as our differential gene analysis for 
+#the enrichment analysis- in this case we can extract it from #the fit
 #sv <- squeezeVar(fit$sigma^2,df=fit$df.residual)
 
 write.table(results_camera,"B236494_camera_final_enrichment.txt",sep="\t")
@@ -345,12 +406,15 @@ sessionInfo()
 
 ```{r volcano_plot_limma_basic, echo=TRUE, fig.cap="Volcano plot of differential expression using limma"}
 
+png("figures/volcano_plot_limma.png", width=1500, height=750)
+
 # Using the volcanoplot function to create the plot
 volcanoplot(fit2, coef=1, style="p-value", highlight=10,
             names=rownames(fit2$coefficients), 
             xlab="Log2 Fold Change", ylab="-Log10 P-value",
             pch=20, cex=1, main="Volcano Plot")
 
+dev.off()
 
 ```
 
@@ -361,9 +425,6 @@ topTreat_myresults <- topTreat(fit2, coef=1, adjust="BH", sort.by="p", number=In
 write.table(topTreat_myresults, "B236494_topTreat_results.txt", sep="\t", quote=FALSE)
 
 
-```
-
-```{}
 ```
 
 # Supplementary Material
@@ -379,7 +440,9 @@ write.table(topTreat_myresults, "B236494_topTreat_results.txt", sep="\t", quote=
 ## Supplementary code to load .CEL files:
 
 ```{r Supplementary Code, eval=FALSE}
-# This code can be used to generate the targets file. Kindly alter the name of the GEO query to retrieve the right .tar file for analysis 
+# This code can be used to generate the targets file. 
+# Kindly alter the name of the GEO query to retrieve
+# the right .tar file for analysis 
 
 library(GEOquery)
 
