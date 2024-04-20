@@ -156,6 +156,7 @@ boxplot(values, col=colours,las=1)
 Normalisation has been performed accurately. The presence of outliers could be interesting and something that we will explore downstream. The interquartile range is seen to similar across the different groups means which they should be suitable for comparison for significant genes.
 
 Below, both the MVA plots will be compared.
+
 ```{r plot_normalised mva without normalisation}
 
 # The mva plot for the non-normalised raw data
@@ -189,7 +190,7 @@ As the data has been normalised, we can now proceed to the next stage of identif
 
 To get an idea which samples exhibit similar expression patterns, a hierarchical clustering is done. Using the hclust() a dendogram of the hierarchical clusters is visualised.
 
-```{r pca_normalised, echo=TRUE}
+```{r dendogram, echo=TRUE}
 
 #png("figures/Cluster_Dendogram.#png", width=500, height=500)
 
@@ -231,6 +232,7 @@ We can see a clear variability between both the groups along PC1 (x axis) which 
 
 ## Perform fold filtering
 
+In this section,
 ```{r fold_filtering, include=FALSE}
 
 #obtaining a matrix of expression values
