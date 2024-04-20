@@ -59,8 +59,7 @@ The sample names are as follows:
 The goals of this analysis pipeline involves a few key steps:
 
 -   To assess the quality of the data
--   Perform Normalisation of the data
--   Robust Multi-array Average (RMA)
+-   Perform Normalisation of the data using Robust Multi-array Average (RMA) approach
 -   Functional Enrichment Analysis
 -   Selection of Differentially Expressed Genes
 
@@ -87,12 +86,12 @@ print(mydata)
 Now that the data has been loaded into the object, the quality of the Microarray data needs to assessed. This is important to ensure that the data has been successfully generated and that there is no severe contamination during the RNA extraction steps from the samples. Quality control can be performed by the use of box plots and a log density plot. Looking at the results of a box plot can give us an idea of the variation in data between the different replicates from each type of sample. If the difference between the replicates is large, this could imply that the extraction procedure was not done in a robust manner. The density histogram also serves the same function. Looking at these plots we can gain a preliminary idea of the quality of the data.
 
 ```{r density_plot, echo=TRUE}
-png("figures/density_plot.png", width=1000, height=1000)
+#png("figures/density_plot.#png", width=1000, height=1000)
 
 # Quality control plots 1
 hist(mydata)
 
-dev.off()
+#dev.off()
 
 ```
 
@@ -102,7 +101,7 @@ As visible from the output the density plot, the peak of expression seem to be c
 
 # Quality control plots 2
 
-png("figures/boxplot_non_normalised_2.png", width=1000, height=1000)
+#png("figures/boxplot_non_normalised_2.#png", width=1000, height=1000)
 
 # Specifying colours for each group
 colours <- c(rep("yellow",3),rep("red",3))
@@ -112,7 +111,7 @@ par(cex.axis=0.9)
 
 boxplot(mydata, col=colours, las=1)
 
-dev.off()
+#dev.off()
 
 ```
 
@@ -121,61 +120,78 @@ The boxplots results is promising as well. The different measures of the boxplot
 
 ## Normalise the data using RMA
 
-Now t
+The data quality control is typically followed by normalisation. This step is important for the steps that follow downstream such as identifying significant genes after performing differential expression analyses (DEA). RMA ensures that the noisy data that can be generated for a number of reason during microarray analyses is negated. It also performs a log transformation of hte data which can help in the stablisation of variance across different intensities observed. It finally summarises the complex data to give us a simple expression value for each gene of the samples present. This can be used in DEA.
 
 ```{r normalise, echo=FALSE}
 
+# Performing the actual rma step
 eset <- rma(mydata)
-eset
-# To obtain a matrix of the expression values, use exprs() 
+
+#uncomment below to view what eset is
+#eset
+
+# A matrix of the expression values using exprs() of expression values
 values <- exprs(eset)
 
 ```
+The object "values" contains the individual expression values for each gene in our list and the individual expression value for each gene for a particular sample.
 
-## Plot Normalised Data
+## Plotting Normalised Data
 
+Now that we have the normalised data, we can plot these values to observe the changes that have been made following the RMA step. A boxplot will be used again to observe the changes. The use of the mva.pairs() is also employed which generates a MA plot for all the samples. The MA plot, which is described as a application of Bland-Altman plot, is a method of visually representing genomic data. It works by visualising the differences among measures taken in 2 different samples "by transforming the data onto M (log ratio) and A (mean average) scales, then plotting these values." This can be done for every sample against every sample which is what has been done here for both the normalised and non-normalised data. it provides valuable insight into the differences between samples and there is genuine difference the groups. If there was no difference then it would imply that there has been no effect on the induced condition on the group of mice whose Arid1a gene has been deleted which is not consistent with what is known. It gives confidence that the experiment was performed well.
+
+
+First, looking at the boxplot,
 ```{r plot_normalised boxplot, echo=TRUE }
 
 # Boxplot to observe the results of normalisation
-png("figures/boxplot_normalised_2.png", width=1000, height=1000)
+#png("figures/boxplot_normalised_2.#png", width=1000, height=1000)
 
 # Increase font size for axis labels to increase readability
 par(cex.axis=1.4)
-
 boxplot(values, col=colours,las=1)
 
-dev.off()
+#dev.off()
 ```
+Normalisation has been performed accurately. The presence of outliers could be interesting and something that we will explore downstream. The interquartile range is seen to similar across the different groups means which they should be suitable for comparison for significant genes.
 
+Below, both the MVA plots will be compared.
 ```{r plot_normalised mva without normalisation}
 
 # The mva plot for the non-normalised raw data
 
-png("figures/mva_without_normalisation.png", width=1000, height=1000)
+#png("figures/mva_without_normalisation.#png", width=1000, height=1000)
 
 par(cex.axis=0.3, cex.lab=0.5, cex=0.5)
 mva.pairs(pm(mydata))
 
-dev.off()
+#dev.off()
 ```
 
 ```{r plot_normalised mva with normalisation}
 
 # MA plot of all the samples which have been normalised
 
-png("figures/mva_with_normalisation.png", width=1000, height=1000)
+#png("figures/mva_with_normalisation.#png", width=1000, height=1000)
 
 par(cex.axis=0.7, cex.lab=0.5, cex=0.5)
 mva.pairs(values)
 
-dev.off()
+#dev.off()
 ```
+
+Observing both MVA plots we can make some inferences. The consistency across the replicates from the same group i.e same biologcal condition implies that normalisation has been carried out successfully and a comparison between these samples is valid. Although there is consistency among the samples in a group there is still a difference betweent the two groups in the expression. This is promising because this means that the onset of the condition actually has resulted in a change in the expression levels. 
+
+As the data has been normalised, we can now proceed to the next stage of identifying the significant genes in the dataset.
+
 
 ## Plot Cluster Dendogram
 
-```{r heatmap_normalised, echo=TRUE}
+To get an idea which samples exhibit similar expression patterns, a hierarchical clustering is done. Using the hclust() a dendogram of the hierarchical clusters is visualised.
 
-png("figures/Cluster_Dendogram.png", width=500, height=500)
+```{r pca_normalised, echo=TRUE}
+
+#png("figures/Cluster_Dendogram.#png", width=500, height=500)
 
 # To facilitate interpretation, let’s replace the columns # # header,currently
 # displaying the filename, to show the name of each sample 
@@ -186,14 +202,19 @@ colnames(values) <- rownames(pData(adf))
 hc<-hclust(as.dist(1-cor(values, method="pearson")), method="average")
 plot(hc)
 
-dev.off()
+#dev.off()
 ```
 
-## Perform PCA
+We could expect that samples will in 2 clusters of 3 as there are 3 samples for each group but that is not the case here. One of the f_f group has a similar expression pattern to the d_d group while the other samples cluster with samples of the same group. This could be because of an atypical sample or soemething of biological relevance. More samples would be required to further analyse this clustering which is unfortunately not available.
+
+
+## Performing PCA
+
+Principle Component Analysis (PCA) is a dimensionality reduction technique that is converts the original variables into a much smaller number of principal components that explain the variability in the data best. It is an interesting way to see how the samples vary and which samples vary in the most similar fashion. prcomp() and scatterplot3d() is used to visualise the first 3 Principal components.
 
 ```{r pca_normalised, echo=TRUE}
 
-png("figures/PCA.png", width=850, height=600)
+#png("figures/PCA.#png", width=850, height=600)
 
 ### removed scale=T, i think its already normalised
 pca <- prcomp(t(values))
@@ -203,8 +224,10 @@ s3d<-scatterplot3d(pca$x[,1:3], pch=19, color=rainbow(1))
 s3d.coords <- s3d$xyz.convert(pca$x[,1:3])
 text(s3d.coords$x, s3d.coords$y, labels = colnames(values),pos = 3,offset = 0.5)
 
-dev.off()
+#dev.off()
 ```
+
+We can see a clear variability between both the groups along PC1 (x axis) which clearly implies that there is clear variability among both the groups of our samples which is what is expected given the nature of the two groups. This further supports our confidence of obtaining significant genes when we try to extract them further down the pipeline.
 
 ## Perform fold filtering
 
@@ -394,19 +417,12 @@ write.table(results_camera,"B236494_camera_final_enrichment.txt",sep="\t")
 #You can then examine the results in “enrichment.txt”.  It is a text file.  It can be downloaded to view in a spreadsheet such as Excel.
 ```
 
-## Session Information
-
-```{r session_info, echo=TRUE}
-
-sessionInfo()
-
-```
 
 # Selecting Differentially expressed genes in the dataset
 
 ```{r volcano_plot_limma_basic, echo=TRUE, fig.cap="Volcano plot of differential expression using limma"}
 
-png("figures/volcano_plot_limma.png", width=1500, height=750)
+#png("figures/volcano_plot_limma.#png", width=1500, height=750)
 
 # Using the volcanoplot function to create the plot
 volcanoplot(fit2, coef=1, style="p-value", highlight=10,
@@ -414,7 +430,7 @@ volcanoplot(fit2, coef=1, style="p-value", highlight=10,
             xlab="Log2 Fold Change", ylab="-Log10 P-value",
             pch=20, cex=1, main="Volcano Plot")
 
-dev.off()
+#dev.off()
 
 ```
 
