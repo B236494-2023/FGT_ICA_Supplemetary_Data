@@ -5,53 +5,70 @@ output:
 ---
 
     title: "Affymetrix Microarray Minimal pipeline"
-    author: "Simon Tomlinson 10/02/2021"
+    author: "B236494 20/04/2024"
     output: html_document
 
-```{r setup, include=FALSE}
-#This is basically the R code from FGT_T3, FGT_T4 and FGT_T5 combined into one script.
-#Running the code in RStudio or MobaXterm is easy-load and run or source the file on one of the servers
-#Modifying the code requires that you understand the R script and the FGT classes!
-#Note that this code often uses the input files directly from /shared_files.  If you do not intend to edit a copy is not needed
-#We do not need to load data between the tutorials - we just use the same data across the whole script
-
-#Problems (features that might be improved)
-#
-#The code has no interactivity or feedback to the user
-#The code has some duplication that could be addressed using a better design!
-#Comments are messy and the code layout is poor in places
-#Note that there are enhancements given in class that are not in the skeleton such as 
-#SimpleAffy, PMA calls, targets file use etc
-#Most of the missing features would results in better outputs and more sustainable code
-#The code will plot figures one after another, OK in RStudio but for SSH sessions they should be saved
-
-#But the skeleton code does run and reproduce the class practical!!
-
-
-
+```{r setup + libload, include=FALSE}
+# This is the setup code chunk that is only executed once to load the neccessary libraries
 
 knitr::opts_chunk$set(echo = TRUE)
-```
 
-# B236494 - Affymetrix Microarray Analysis Basic Workflow
-
-##Load the required libraries & load the files for the workflow
-
-```{r libload, echo=TRUE}
 library(limma)
 library(affy)
 library(annotate)
 library(mouse4302.db)# load chip-specific annotation
 library(ggplot2)
+library(knitr)
+library(tinytex)
 
 #install.packages("scatterplot3d",repo="http://cran.ma.imperia#l.ac.uk")
 #Then load the library
 library(scatterplot3d)
 ```
 
-## Load the main data- commented code is just for information
+# B236494 - Affymetrix Microarray Analysis Basic Workflow
+
+This code has been adapted from the BasicAnalysisScript.Rmd file provided by Simon Tomlinson. This code has been altered to account for author specific input files and samples while retaining the main features of the pipeline. The R Script can be generated for this document by running the last chunk which has been turned off by default Interpretations of the results have been provided alongside the results for convenient viewing. Comments have been added to aid in understanding the flow of execution Please ensure that the right .CEL are located in the working directory for the Code to work. This can be downloaded from the GEO website using the supplementary code provided at the end of the report.
+
+Note: An additional analysis tool was identified known as GEO2R, the analysis of an entry in GEO can also be done using this. It is available at [https://www.ncbi.nlm.nih.gov/geo/geo2r/](https://www.ncbi.nlm.nih.gov/geo/geo2r/?acc=GSE137166)
+
+# Pipeline Steps:
+
+## Loading Data & Introduction
+
+Using the read.AnnotatedDataFrame() the targets are loaded from "B236494_edited_final_targets_file.txt" file into an object. The parameters ensure that the header is accounted for. Following this, the ReadAffy() is used to load information from the .CEL files that were previously extracted from the .tar file that was obtained from Gene Expression Omnibus (GEO).
+
+The samples are from the study, "Endometrial epithelial ARID1A is critical for uterine gland function in early pregnancy establishment" by Marquardt *et al.,* with GEO accession number GSE137166. It was an expression profiling by array experiment type.
+
+AT-rich interaction domain 1A (ARID1A) is a large protein switch/sucrose non-fermentable (SWI/SNF) chromatin remodeling complex subunit which acts as a tumor suppressor.
+
+The *Arid1a* gene was known to have a vital function in regulating the development of the endometrial gland which is essential for fertility after maturity and normal uterine function. Marquardt *et al.* presented evidence of how ARID1A binds and the proceeds to modulate transcription of the *Foxa2* gene that is essential for endometrial gland functioning. They also showed that deletion of *Arid1a* in a uterine specific context results in a severe defect to gland development and consequentially diminished *Foxa2* and *Lif* expression.
+
+There were two types of mice that were used to study this gene. Arid1a d/d and Arid1a f/f mice. In Arid1a f/f the *Arid1a* has been retained while it has been deleted in the Arid1a d/d mice. At 2 weeks of growth, uteri of 3 of each type of mice was selected for RNA extraction and hybridization of Affymetrix microarrays.
+
+The sample names are as follows:
+
+-   GSM4072331	Arid1a f/f 1
+-   GSM4072332	Arid1a f/f 2
+-   GSM4072333	Arid1a f/f 3
+-   GSM4072334	Arid1a d/d 1
+-   GSM4072335	Arid1a d/d 2
+-   GSM4072336	Arid1a d/d 3
+
+The goals of this analysis pipeline involves a few key steps:
+
+-    To assess the quality of the data
+-   Perform Normalisation of the data
+-   Robust Multi-array Average (RMA)
+-   Functional Enrichment Analysis
+-   Selection of Differentially Expressed Genes
+
+The Affy and Limma Bioconductor packages will be main tools that will be used throughout this pipeline with descriptions of the code as the execution proceeds.
+
+
 
 ```{r dataload, echo=TRUE}
+
 # Load the target file into an AnnotatedDataFrame object
 adf<-read.AnnotatedDataFrame("B236494_edited_final_targets_file.txt",header=TRUE,row.names=1,as.is=TRUE)
 # Load the expression values of all the CEL files in the targets file
@@ -65,7 +82,7 @@ mydata
 
 ## Build Quality Control Plots
 
-```{r qc_plots1, echo=FALSE}
+```{r qc_plots1, echo=TRUE}
 
 # Quality control plots
 hist(mydata)
@@ -90,18 +107,20 @@ values <- exprs(eset)
 
 ## Plot Normalised Data
 
-```{r plot_normalised, echo=FALSE}
-
-
+```{r plot_normalised boxplot, echo=FALSE}
 # Boxplot to observe the results of normalisation
 # Notice differences with the boxplot from the raw data
 boxplot(values, col=colours,las=2)
+```
 
+```{r plot_normalised mva without normalisation}
+# The mva plot for the non-normalised raw data
+mva.pairs(pm(mydata))
+```
+
+```{r plot_normalised mva with normalisation}
 # MA plot of the samples 1 and 4
 mva.pairs(values)
-# The same plot for the non-normalised raw data
-# Note that the mva.pairs call below only plots a few of the  #samples – you may wish to plot them all but this is slow
-mva.pairs(pm(mydata))
 
 ```
 
@@ -251,10 +270,6 @@ fit2 <- eBayes(fit2)
 topTable(fit2,coef=1,adjust="fdr")
 myresults <-topTable(fit2,coef=1, adjust="fdr", number=nrow(eset))
 write.table(myresults,"B236494_myresults.txt")
-
-#make a venn diagram
-clas <- classifyTestsF(fit2)
-vennDiagram(clas)
 ```
 
 ## Carry out Functional Enrichment analysis
@@ -303,18 +318,18 @@ H.indices <- ids2indices(Mm.H,fData(eset_t)$ENTREZID)
 #I just run mroast here as an example- justify the selection of this method!
 
 #if you want to run mroast
-results_mroast <-mroast(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
+#results_mroast <-mroast(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
 #if you want to run camera
 results_camera <-camera(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
 #if you want to run romer
-results_romer <-romer(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
+#results_romer <-romer(eset_t,index=H.indices,design=design,contrast=contrastmatrix[,1],adjust.method = "BH")
 #View the results
-results_mroast
+results_camera
 
 #Use help for other parameters. Note we might decide to use #exactly the same model as our differential gene analysis for #the enrichment analysis- in this case we can extract it from #the fit
 #sv <- squeezeVar(fit$sigma^2,df=fit$df.residual)
 
-write.table(results_mroast,"B236494_final_enrichment.txt",sep="\t")
+write.table(results_camera,"B236494_camera_final_enrichment.txt",sep="\t")
 #You can then examine the results in “enrichment.txt”.  It is a text file.  It can be downloaded to view in a spreadsheet such as Excel.
 ```
 
@@ -328,36 +343,6 @@ sessionInfo()
 
 # Selecting Differentially expressed genes in the dataset
 
-```{r Volcano Plot, echo=TRUE, fig.cap="Volcano plot of differential expression"}
-
-# Extracting the table of results
-volcano_plot_results <- topTable(fit2, coef=1, number=Inf, sort.by="none", p.value=1)
-
-# Creating the volcano plot
-#with(results, plot(logFC, -log10(P.Value), pch=20, main="Volcano Plot", xlab="Log Fold Change", ylab="-Log10 P-value"))
-with(volcano_plot_results, {
-    plot(logFC, -log10(P.Value), pch=20, col=ifelse(P.Value < 0.05 & abs(logFC) > 1, "red", "black"), main="Volcano Plot", xlab="Log Fold Change", ylab="-Log10 P-value")
-    abline(h=-log10(0.05), col="blue")
-    abline(v=c(-1, 1), col="green")
-})
-
-
-# Adding a horizontal line for P-value threshold (example threshold P=0.05)
-abline(h=-log10(0.05), col="blue")
-
-# Adding vertical lines for log fold changes thresholds (example thresholds logFC > |1|)
-abline(v=c(-1, 1), col="red")
-
-ggplot(volcano_plot_results, aes(x=logFC, y=-log10(P.Value), color=(P.Value < 0.05 & abs(logFC) > 1))) +
-    geom_point(alpha=0.5) +
-    scale_color_manual(values=c("black", "red")) +
-    labs(title="Volcano Plot", x="Log Fold Change", y="-Log10 P-value") +
-    geom_hline(yintercept=-log10(0.05), color="blue", linetype="dashed") +
-    geom_vline(xintercept=c(-1, 1), color="green", linetype="dashed")
-
-
-```
-
 ```{r volcano_plot_limma_basic, echo=TRUE, fig.cap="Volcano plot of differential expression using limma"}
 
 # Using the volcanoplot function to create the plot
@@ -367,4 +352,85 @@ volcanoplot(fit2, coef=1, style="p-value", highlight=10,
             pch=20, cex=1, main="Volcano Plot")
 
 
+```
+
+```{r topTreat code }
+
+# Extract top genes using topTreat, focusing on those exceeding the fold-change threshold
+topTreat_myresults <- topTreat(fit2, coef=1, adjust="BH", sort.by="p", number=Inf)
+write.table(topTreat_myresults, "B236494_topTreat_results.txt", sep="\t", quote=FALSE)
+
+
+```
+
+```{}
+```
+
+# Supplementary Material
+
+### References:
+
+1.  Marquardt, R.M., Kim, T.H., Yoo, J.-Y., Teasley, H.E., Fazleabas, A.T., Young, S.L., Lessey, B.A., Arora, R., and Jeong, J.-W. (2021). Endometrial epithelial ARID1A is critical for uterine gland function in early pregnancy establishment. The FASEB Journal *35*, e21209. [10.1096/fj.202002178R](https://doi.org/10.1096/fj.202002178R).
+
+2.  
+
+### 
+
+## Supplementary code to load .CEL files:
+
+```{r Supplementary Code, eval=FALSE}
+# This code can be used to generate the targets file. Kindly alter the name of the GEO query to retrieve the right .tar file for analysis 
+
+library(GEOquery)
+
+
+filePaths = getGEOSuppFiles("GSE137166")
+
+filePaths
+
+rownames(filePaths[1])
+dir()
+
+
+dir(path = "./GSE137166")
+setwd("./GSE137166")
+
+system("tar -xvf GSE137166_RAW.tar")
+system("gzip -d *.gz")
+
+setwd("..")
+
+
+gds <- getGEO('GSE137166', destdir=".")
+
+gds <-gds[[1]]
+  
+gds
+
+phenoData(gds)
+
+phenoData(gds)$title
+
+
+rownames(phenoData(gds))
+
+
+targets_tab <-as.matrix(pData(phenoData(gds))[,c("title")])
+
+
+rownames(targets_tab) <-rownames(pData(phenoData(gds)))
+
+targets_tab
+
+write.table(targets_tab, file="targets_tab_main.txt",sep="\t",col.names=T,row.names=T)
+
+```
+
+```{r generate script & pdf, eval=FALSE}
+# This will give us the R script & report
+# This chunk does not run by default
+#purl("B236494_Basic_Analysis_Rmd_document.Rmd", output = "B236494_Basic_Analysis_Rmd_document.R", documentation = 2)
+
+# This code chunk will give us the pdf document
+#rmarkdown::render("B236494_Basic_Analysis_Rmd_document.Rmd", output_format = "pdf_document")
 ```
